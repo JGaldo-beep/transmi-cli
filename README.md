@@ -14,19 +14,46 @@ CLI tool for the Transmilenio system in Bogotá, Colombia.
 
 ## Claude Desktop Integration
 
-You can use transmilenio-cli directly from Claude Desktop! Just ask Claude naturally:
+You can use transmilenio-cli directly from Claude Code, Cursor, or Windsurf! Just ask naturally:
 
-> "How do I get from Portal Norte to Av. Jiménez?"
+> "Busca rutas de Portal Eldorado"
+> "¿Cuántas rutas TransMilenio hay?"
+> "Muéstrame rutas que pasan por Suba"
 
-Claude will automatically search routes, plan your trip, and give you directions.
+**⚡ Quick Setup:**
+```bash
+bun install
+bun run setup-mcp
+```
 
-**[📖 See CLAUDE.md for setup instructions](./CLAUDE.md)**
+The interactive installer will detect your environment and configure everything automatically!
+
+**[📖 See INSTALL.md for detailed instructions](./INSTALL.md)**
 
 ## Installation
 
+### Quick Start
+
 ```bash
+# Clone the repository
+git clone <url>
+cd transmilenio-cli
+
+# Install dependencies
 bun install
+
+# Setup MCP (interactive)
+bun run setup-mcp
 ```
+
+### Features
+
+- ✅ **1,228 real routes** from Transmilenio's official API
+- ✅ **245 TransMilenio routes** (trunk lines)
+- ✅ **Real schedules** by day type (Mon-Fri, Mon-Sat, Sun-Holidays)
+- ✅ **Trunk line information** (zones, colors, PDFs)
+- ✅ **Automatic caching** (24h TTL for better performance)
+- ✅ **Advanced search** by name, code, and type
 
 ## Usage
 

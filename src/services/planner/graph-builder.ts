@@ -1,9 +1,9 @@
 // Graph builder for route planning
 
-import type { Graph, GraphNode, GraphEdge } from '@types/graph.js';
-import type { RouteDetails } from '@types/route.js';
 import { ROUTE_TYPE_WEIGHTS, TRANSMILENIO } from '@config/constants.js';
 import { logger } from '@lib/logger.js';
+import type { Graph, GraphEdge, GraphNode } from '@types/graph.js';
+import type { RouteDetails } from '@types/route.js';
 
 /**
  * Build a weighted graph from route data
@@ -50,13 +50,13 @@ export function buildGraph(routes: RouteDetails[]): Graph {
       if (!edges.has(from)) {
         edges.set(from, []);
       }
-      edges.get(from)!.push(edge);
+      edges.get(from)?.push(edge);
 
       // Add reverse edge (bidirectional)
       if (!edges.has(to)) {
         edges.set(to, []);
       }
-      edges.get(to)!.push({
+      edges.get(to)?.push({
         ...edge,
         from: to,
         to: from,
@@ -101,7 +101,7 @@ function normalizeStationId(stationName: string): string {
   return stationName
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/\p{M}/gu, '') // Remove accents (Unicode property escapes)
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 }
@@ -136,8 +136,9 @@ export function findNodeByName(graph: Graph, stationName: string): GraphNode | n
   const normalizedSearch = normalizeStationId(stationName);
 
   // Exact match first
-  if (graph.nodes.has(normalizedSearch)) {
-    return graph.nodes.get(normalizedSearch)!;
+  const exactMatch = graph.nodes.get(normalizedSearch);
+  if (exactMatch) {
+    return exactMatch;
   }
 
   // Fuzzy match

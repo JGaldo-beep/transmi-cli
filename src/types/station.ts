@@ -1,12 +1,6 @@
 // Station types for Transmilenio CLI
 
-export type StationType =
-  | 'troncal'
-  | 'portal'
-  | 'intermedia'
-  | 'sencilla'
-  | 'sitp'
-  | 'cable';
+export type StationType = 'troncal' | 'portal' | 'intermedia' | 'sencilla' | 'sitp' | 'cable';
 
 export interface Coordinates {
   lat: number;

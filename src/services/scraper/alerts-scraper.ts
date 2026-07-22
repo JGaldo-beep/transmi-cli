@@ -73,11 +73,7 @@ export async function scrapeAlerts(): Promise<Alert[]> {
     return alerts;
   } catch (error) {
     logger.error('Failed to scrape alerts:', error);
-    throw new ScrapingError(
-      'ALERTS_SCRAPE_FAILED',
-      'Failed to scrape alerts from website',
-      error
-    );
+    throw new ScrapingError('ALERTS_SCRAPE_FAILED', 'Failed to scrape alerts from website', error);
   }
 }
 

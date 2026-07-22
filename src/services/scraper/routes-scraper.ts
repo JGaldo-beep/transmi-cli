@@ -1,14 +1,59 @@
-// Routes scraper using agent-browser for Transmilenio website
+// Routes scraper using Transmilenio API
 
-import type { Route, RouteDetails } from '@types/route.js';
-import { TRANSMILENIO_URLS } from '@config/urls.js';
 import { ScrapingError } from '@lib/errors.js';
 import { logger } from '@lib/logger.js';
+import { ApiRoutesResponseSchema } from '@schemas/route.schema.js';
 import { cacheManager } from '@services/cache/index.js';
-import { $ } from 'bun';
+import type { ApiRoute, ApiRoutesResponse, Route, RouteDetails } from '@types/route.js';
+
+const API_BASE_URL = 'https://ms-transmiapp-rm2xahnybq-uk.a.run.app/api/v1';
 
 /**
- * Scrape all routes from Transmilenio website
+ * Convert API route to internal Route type
+ */
+function apiRouteToRoute(apiRoute: ApiRoute): Route {
+  return {
+    id: apiRoute.id.toString(),
+    code: apiRoute.codigo,
+    name: apiRoute.nombre,
+    type: apiRoute.tipo,
+    color: apiRoute.color,
+    status: 'active', // API doesn't provide status, assume active
+    troncal: apiRoute.troncal
+      ? {
+          id: apiRoute.troncal.id,
+          name: apiRoute.troncal.nombre,
+          zone: apiRoute.troncal.zona,
+          color: apiRoute.troncal.color,
+        }
+      : undefined,
+  };
+}
+
+/**
+ * Convert API route to RouteDetails type
+ */
+function apiRouteToRouteDetails(apiRoute: ApiRoute): RouteDetails {
+  return {
+    ...apiRouteToRoute(apiRoute),
+    horarios: apiRoute.horarios.map((h) => ({
+      dayType: h.tipoDia,
+      start: h.inicio,
+      end: h.fin,
+    })),
+    informacion: apiRoute.informacion
+      ? {
+          plegable: apiRoute.informacion.plegable || undefined,
+          esquema: apiRoute.informacion.esquema || undefined,
+          tabla: apiRoute.informacion.tabla || undefined,
+          mapa: apiRoute.informacion.mapa || undefined,
+        }
+      : undefined,
+  };
+}
+
+/**
+ * Fetch routes from Transmilenio API
  */
 export async function scrapeRoutes(): Promise<Route[]> {
   const cacheKey = 'routes_all';
@@ -20,80 +65,58 @@ export async function scrapeRoutes(): Promise<Route[]> {
     return cached;
   }
 
-  logger.info('Scraping routes from Transmilenio website...');
+  logger.info('Fetching routes from Transmilenio API...');
 
   try {
-    // Open the routes page
-    await $`agent-browser open ${TRANSMILENIO_URLS.routes}`.quiet();
-    await $`agent-browser wait --load networkidle`.quiet();
+    const allRoutes: Route[] = [];
+    let page = 0;
+    let totalPages = 1;
 
-    // Get snapshot to see the page structure
-    const snapshot = await $`agent-browser snapshot -i`.text();
+    // Fetch all pages
+    while (page < totalPages) {
+      const response = await fetch(
+        `${API_BASE_URL}/rutas/buscar?page=${page}&size=50&sort=idCodigo%2Casc`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        }
+      );
 
-    logger.debug('Page snapshot obtained');
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
 
-    // Extract route data from the page
-    // This is a simplified version - in reality, we'd parse the actual HTML structure
-    const routes: Route[] = await extractRoutesFromPage();
+      const data = await response.json();
+
+      // Validate response with Zod
+      const validated = ApiRoutesResponseSchema.parse(data);
+
+      // Convert API routes to internal Route type
+      const routes = validated.content.map(apiRouteToRoute);
+      allRoutes.push(...routes);
+
+      totalPages = validated.totalPages;
+      page++;
+
+      logger.debug(`Fetched page ${page}/${totalPages} (${routes.length} routes)`);
+    }
 
     // Cache the results
-    await cacheManager.set(cacheKey, routes);
+    await cacheManager.set(cacheKey, allRoutes);
 
-    // Close browser
-    await $`agent-browser close`.quiet();
-
-    logger.success(`Scraped ${routes.length} routes`);
-    return routes;
+    logger.success(`Fetched ${allRoutes.length} routes from API`);
+    return allRoutes;
   } catch (error) {
-    logger.error('Failed to scrape routes:', error);
-    await $`agent-browser close`.nothrow().quiet();
+    logger.error('Failed to fetch routes from API:', error);
     throw new ScrapingError(
-      'ROUTES_SCRAPE_FAILED',
-      'Failed to scrape routes from website',
+      'ROUTES_FETCH_FAILED',
+      'Failed to fetch routes from Transmilenio API',
       error
     );
   }
-}
-
-/**
- * Extract routes data from the page
- * TODO: This needs to be implemented based on actual page structure
- */
-async function extractRoutesFromPage(): Promise<Route[]> {
-  // For now, return mock data
-  // In a real implementation, this would use agent-browser eval or snapshot parsing
-  logger.warn('Using mock route data - actual scraping not yet implemented');
-
-  return [
-    {
-      id: '1',
-      code: 'B11',
-      name: 'Portal Norte - Universidades',
-      type: 'troncal',
-      status: 'active',
-    },
-    {
-      id: '2',
-      code: 'C30',
-      name: 'Alameda - Suba',
-      type: 'complementario',
-      status: 'active',
-    },
-    {
-      id: '3',
-      code: 'K86',
-      name: 'Portal Eldorado - Calle 100',
-      type: 'troncal',
-      status: 'active',
-    },
-    {
-      id: '4',
-      code: 'A10',
-      name: 'Portal Norte - Alimentador',
-      type: 'alimentador',
-      status: 'active',
-    },
-  ];
 }
 
 /**
@@ -102,10 +125,15 @@ async function extractRoutesFromPage(): Promise<Route[]> {
 export async function searchRoutes(query: string, type?: string): Promise<Route[]> {
   const allRoutes = await scrapeRoutes();
 
+  if (!query && !type) {
+    return allRoutes;
+  }
+
   const lowerQuery = query.toLowerCase();
 
   return allRoutes.filter((route) => {
     const matchesQuery =
+      !query ||
       route.code.toLowerCase().includes(lowerQuery) ||
       route.name.toLowerCase().includes(lowerQuery);
 
@@ -131,55 +159,38 @@ export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetai
   logger.info(`Fetching route details for ${routeIdOrCode}...`);
 
   try {
-    // Find the route first
-    const routes = await scrapeRoutes();
-    const route = routes.find(
-      (r) => r.id === routeIdOrCode || r.code.toLowerCase() === routeIdOrCode.toLowerCase()
+    // Search for the specific route
+    const response = await fetch(
+      `${API_BASE_URL}/rutas/buscar?page=0&size=100&sort=idCodigo%2Casc`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      }
     );
 
-    if (!route) {
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const validated = ApiRoutesResponseSchema.parse(data);
+
+    // Find the route by ID or code
+    const apiRoute = validated.content.find(
+      (r) =>
+        r.id.toString() === routeIdOrCode || r.codigo.toLowerCase() === routeIdOrCode.toLowerCase()
+    );
+
+    if (!apiRoute) {
+      logger.warn(`Route not found: ${routeIdOrCode}`);
       return null;
     }
 
-    // Mock route details - in real implementation, scrape from detail page
-    const details: RouteDetails = {
-      ...route,
-      stations: [
-        'Portal Norte',
-        'Calle 187',
-        'Calle 170',
-        'Calle 146',
-        'Calle 142',
-        'Calle 127',
-        'Pepe Sierra',
-        'Calle 100',
-        'Virrey',
-        'Av. Chile',
-        'Calle 76',
-        'Calle 72',
-        'Calle 63',
-        'Av. 39',
-        'Av. Jiménez',
-        'Universidades',
-      ],
-      schedule: {
-        weekday: {
-          start: '04:30',
-          end: '23:00',
-          frequency: {
-            peak: 3,
-            offPeak: 8,
-          },
-        },
-        weekend: {
-          start: '05:00',
-          end: '22:00',
-          frequency: 10,
-        },
-      },
-      distance: 18.5,
-      estimatedDuration: 45,
-    };
+    // Convert to RouteDetails
+    const details = apiRouteToRouteDetails(apiRoute);
 
     // Cache the results
     await cacheManager.set(cacheKey, details);

@@ -5,18 +5,21 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
   type CallToolRequest,
+  CallToolRequestSchema,
   type ListToolsRequest,
+  ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-// Import real services
-import { searchRoutes as searchRoutesService, getRouteDetails } from '@services/scraper/routes-scraper.js';
-import { getActiveAlerts, getAlertsByRoute } from '@services/scraper/alerts-scraper.js';
-import { buildGraph, addTransferEdges, findNodeByName } from '@services/planner/graph-builder.js';
-import { findShortestPath, pathResultToTripPlan } from '@services/planner/dijkstra.js';
 import { logger } from '@lib/logger.js';
+import { findShortestPath, pathResultToTripPlan } from '@services/planner/dijkstra.js';
+import { addTransferEdges, buildGraph, findNodeByName } from '@services/planner/graph-builder.js';
+import { getActiveAlerts, getAlertsByRoute } from '@services/scraper/alerts-scraper.js';
+// Import real services
+import {
+  getRouteDetails,
+  searchRoutes as searchRoutesService,
+} from '@services/scraper/routes-scraper.js';
 
 /**
  * Search for routes
@@ -29,7 +32,7 @@ async function searchRoutes(query: string, type?: string) {
   return {
     success: true,
     count: routes.length,
-    routes: routes.map(r => ({
+    routes: routes.map((r) => ({
       code: r.code,
       name: r.name,
       type: r.type,
@@ -41,20 +44,18 @@ async function searchRoutes(query: string, type?: string) {
 /**
  * Plan a trip between two stations
  */
-async function planTrip(
-  origin: string,
-  destination: string,
-  optimizeFor?: 'time' | 'transfers'
-) {
-  logger.info(`[MCP] Planning trip: ${origin} → ${destination} (optimize: ${optimizeFor || 'time'})`);
+async function planTrip(origin: string, destination: string, optimizeFor?: 'time' | 'transfers') {
+  logger.info(
+    `[MCP] Planning trip: ${origin} → ${destination} (optimize: ${optimizeFor || 'time'})`
+  );
 
   try {
     // Get all routes with details
     const allRoutes = await searchRoutesService('');
     const routeDetails = await Promise.all(
-      allRoutes.slice(0, 10).map(r => getRouteDetails(r.code))
+      allRoutes.slice(0, 10).map((r) => getRouteDetails(r.code))
     );
-    const validRoutes = routeDetails.filter(r => r !== null);
+    const validRoutes = routeDetails.filter((r) => r !== null);
 
     if (validRoutes.length === 0) {
       return {
@@ -130,7 +131,7 @@ async function getAlerts(route?: string) {
   return {
     success: true,
     count: alerts.length,
-    alerts: alerts.map(a => ({
+    alerts: alerts.map((a) => ({
       title: a.title,
       description: a.description,
       route: a.route,
@@ -306,7 +307,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(`[MCP] Tool execution error:`, error);
+    logger.error('[MCP] Tool execution error:', error);
     return {
       content: [
         {

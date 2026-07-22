@@ -1,10 +1,17 @@
 // Cache manager with TTL support for Transmilenio CLI
 
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
 import { CACHE_DIR, CACHE_TTL } from '@config/constants.js';
 import { CacheError } from '@lib/errors.js';
 import { logger } from '@lib/logger.js';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from 'fs';
-import { join } from 'path';
 
 export type CacheKey = keyof typeof CACHE_TTL;
 

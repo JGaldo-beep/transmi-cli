@@ -18,7 +18,10 @@ export const SearchOptionsSchema = GlobalOptionsSchema.extend({
 export const PlanOptionsSchema = GlobalOptionsSchema.extend({
   fastest: z.boolean().optional(),
   shortest: z.boolean().optional(),
-  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional(),
   alternatives: z.number().int().positive().max(10).optional(),
   accessible: z.boolean().optional(),
 });
@@ -36,7 +39,10 @@ export const BalanceOptionsSchema = GlobalOptionsSchema.extend({
 
 export const StopsOptionsSchema = GlobalOptionsSchema.extend({
   type: z.string().optional(),
-  nearby: z.string().regex(/^-?\d+\.?\d*,-?\d+\.?\d*$/).optional(), // lat,lon
+  nearby: z
+    .string()
+    .regex(/^-?\d+\.?\d*,-?\d+\.?\d*$/)
+    .optional(), // lat,lon
   radius: z.number().positive().optional(),
 });
 

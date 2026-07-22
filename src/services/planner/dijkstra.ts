@@ -1,10 +1,10 @@
 // Dijkstra's algorithm for shortest path finding
 
-import type { Graph, GraphNode, PathResult } from '@types/graph.js';
-import type { TripPlan, TripSegment } from '@types/trip.js';
 import { TRANSMILENIO } from '@config/constants.js';
 import { NotFoundError } from '@lib/errors.js';
 import { logger } from '@lib/logger.js';
+import type { Graph, GraphNode, PathResult } from '@types/graph.js';
+import type { TripPlan, TripSegment } from '@types/trip.js';
 
 interface DijkstraNode {
   node: GraphNode;
@@ -31,7 +31,7 @@ export function findShortestPath(
   for (const [nodeId, node] of graph.nodes.entries()) {
     distances.set(nodeId, {
       node,
-      distance: nodeId === startNode.id ? 0 : Infinity,
+      distance: nodeId === startNode.id ? 0 : Number.POSITIVE_INFINITY,
       previous: null,
       previousRoute: null,
     });
@@ -42,10 +42,10 @@ export function findShortestPath(
   while (unvisited.size > 0) {
     // Find unvisited node with minimum distance
     let currentId: string | null = null;
-    let minDistance = Infinity;
+    let minDistance = Number.POSITIVE_INFINITY;
 
     for (const nodeId of unvisited) {
-      const dist = distances.get(nodeId)!.distance;
+      const dist = distances.get(nodeId)?.distance;
       if (dist < minDistance) {
         minDistance = dist;
         currentId = nodeId;
@@ -53,7 +53,7 @@ export function findShortestPath(
     }
 
     // If no reachable nodes left, break
-    if (currentId === null || minDistance === Infinity) {
+    if (currentId === null || minDistance === Number.POSITIVE_INFINITY) {
       break;
     }
 
@@ -68,12 +68,15 @@ export function findShortestPath(
 
     // Update distances to neighbors
     const edges = graph.edges.get(currentId) || [];
-    const currentDist = distances.get(currentId)!;
+    const currentDist = distances.get(currentId);
+    if (!currentDist) continue;
 
     for (const edge of edges) {
       if (visited.has(edge.to)) continue;
 
-      const neighborDist = distances.get(edge.to)!;
+      const neighborDist = distances.get(edge.to);
+      if (!neighborDist) continue;
+
       let newDistance = currentDist.distance + edge.weight;
 
       // Add transfer penalty if changing routes
@@ -120,7 +123,7 @@ function reconstructPath(
   const path: GraphNode[] = [];
   let current = distances.get(endNode.id);
 
-  if (!current || current.distance === Infinity) {
+  if (!current || current.distance === Number.POSITIVE_INFINITY) {
     return [];
   }
 
@@ -172,7 +175,7 @@ function calculatePathMetrics(
   }
 
   const endNode = path[path.length - 1];
-  const totalTime = Math.round(distances.get(endNode.id)!.distance);
+  const totalTime = Math.round(distances.get(endNode.id)?.distance);
 
   return {
     path,
