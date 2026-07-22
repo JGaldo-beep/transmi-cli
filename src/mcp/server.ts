@@ -11,67 +11,134 @@ import {
   type ListToolsRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 
-// We'll import the actual implementations once we create them
-// For now, these are placeholder functions
-async function searchRoutes(query: string, type?: string): Promise<unknown> {
-  // TODO: Implement actual route search
+// Import real services
+import { searchRoutes as searchRoutesService, getRouteDetails } from '@services/scraper/routes-scraper.js';
+import { getActiveAlerts, getAlertsByRoute } from '@services/scraper/alerts-scraper.js';
+import { buildGraph, addTransferEdges, findNodeByName } from '@services/planner/graph-builder.js';
+import { findShortestPath, pathResultToTripPlan } from '@services/planner/dijkstra.js';
+import { logger } from '@lib/logger.js';
+
+/**
+ * Search for routes
+ */
+async function searchRoutes(query: string, type?: string) {
+  logger.info(`[MCP] Searching routes: ${query} ${type ? `(type: ${type})` : ''}`);
+
+  const routes = await searchRoutesService(query, type);
+
   return {
-    routes: [
-      {
-        code: 'B11',
-        name: 'Portal Norte - Universidades',
-        type: 'troncal',
-        status: 'active',
-      },
-    ],
+    success: true,
+    count: routes.length,
+    routes: routes.map(r => ({
+      code: r.code,
+      name: r.name,
+      type: r.type,
+      status: r.status,
+    })),
   };
 }
 
+/**
+ * Plan a trip between two stations
+ */
 async function planTrip(
   origin: string,
   destination: string,
   optimizeFor?: 'time' | 'transfers'
-): Promise<unknown> {
-  // TODO: Implement actual trip planning
-  return {
-    origin,
-    destination,
-    segments: [
-      {
-        from: origin,
-        to: destination,
-        route: 'B11',
-        duration: 35,
-        stops: 8,
-      },
-    ],
-    transfers: 0,
-    totalDuration: 35,
-    estimatedCost: 3000,
-  };
+) {
+  logger.info(`[MCP] Planning trip: ${origin} → ${destination} (optimize: ${optimizeFor || 'time'})`);
+
+  try {
+    // Get all routes with details
+    const allRoutes = await searchRoutesService('');
+    const routeDetails = await Promise.all(
+      allRoutes.slice(0, 10).map(r => getRouteDetails(r.code))
+    );
+    const validRoutes = routeDetails.filter(r => r !== null);
+
+    if (validRoutes.length === 0) {
+      return {
+        success: false,
+        error: 'No routes available for planning',
+      };
+    }
+
+    // Build graph
+    const graph = addTransferEdges(buildGraph(validRoutes));
+
+    // Find nodes
+    const startNode = findNodeByName(graph, origin);
+    const endNode = findNodeByName(graph, destination);
+
+    if (!startNode) {
+      return {
+        success: false,
+        error: `Origin station "${origin}" not found`,
+      };
+    }
+
+    if (!endNode) {
+      return {
+        success: false,
+        error: `Destination station "${destination}" not found`,
+      };
+    }
+
+    // Find path
+    const pathResult = findShortestPath(graph, startNode, endNode);
+    const tripPlan = pathResultToTripPlan(pathResult, graph, origin, destination);
+
+    return {
+      success: true,
+      trip: tripPlan,
+    };
+  } catch (error) {
+    logger.error('[MCP] Trip planning error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
-async function checkBalance(cardNumber: string): Promise<unknown> {
-  // TODO: Implement actual balance check
+/**
+ * Check TuLlave card balance
+ */
+async function checkBalance(cardNumber: string) {
+  logger.info(`[MCP] Checking balance for card ending in ${cardNumber.slice(-4)}`);
+
+  // TODO: Implement actual balance check with web scraping
+  // For now, return mock data
   return {
+    success: true,
     cardNumber: cardNumber.replace(/\d(?=\d{4})/g, '*'),
     balance: 15000,
     status: 'active',
     lastUpdate: new Date().toISOString(),
+    message: 'Balance check via web scraping not yet implemented',
   };
 }
 
-async function getAlerts(route?: string): Promise<unknown> {
-  // TODO: Implement actual alerts fetching
+/**
+ * Get service alerts
+ */
+async function getAlerts(route?: string) {
+  logger.info(`[MCP] Getting alerts${route ? ` for route ${route}` : ''}`);
+
+  const alerts = route ? await getAlertsByRoute(route) : await getActiveAlerts();
+
   return {
-    alerts: [
-      {
-        title: 'Cierre estación Av. Jiménez',
-        description: 'Cerrada por obras del Metro hasta el 30 de julio',
-        route: route || 'all',
-        active: true,
-      },
-    ],
+    success: true,
+    count: alerts.length,
+    alerts: alerts.map(a => ({
+      title: a.title,
+      description: a.description,
+      route: a.route,
+      active: a.active,
+      type: a.type,
+      startDate: a.startDate,
+      endDate: a.endDate,
+    })),
   };
 }
 
@@ -115,7 +182,7 @@ server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsReque
       {
         name: 'plan_trip',
         description:
-          'Plan a trip from origin to destination in Transmilenio system. Returns optimal route with segments, transfers, duration, and cost.',
+          'Plan a trip from origin to destination in Transmilenio system. Returns optimal route with segments, transfers, duration, and cost. Uses Dijkstra algorithm to find the shortest path.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -239,11 +306,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`[MCP] Tool execution error:`, error);
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ error: errorMessage }, null, 2),
+          text: JSON.stringify({ success: false, error: errorMessage }, null, 2),
         },
       ],
       isError: true,
@@ -255,15 +323,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[transmilenio-mcp] Server running on stdio');
-  console.error('[transmilenio-mcp] 4 tools available:');
-  console.error('  - search_routes: Search for routes');
-  console.error('  - plan_trip: Plan a trip between stations');
-  console.error('  - check_balance: Check TuLlave card balance');
-  console.error('  - get_alerts: Get service alerts');
+
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('  Transmilenio MCP Server');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('✓ Server running on stdio');
+  logger.info('✓ 4 tools available:');
+  logger.info('  • search_routes - Search for routes');
+  logger.info('  • plan_trip - Plan a trip between stations');
+  logger.info('  • check_balance - Check TuLlave card balance');
+  logger.info('  • get_alerts - Get service alerts');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('Ready for Claude Desktop!');
 }
 
 main().catch((error) => {
-  console.error('[transmilenio-mcp] Fatal error:', error);
+  logger.error('[transmilenio-mcp] Fatal error:', error);
   process.exit(1);
 });
