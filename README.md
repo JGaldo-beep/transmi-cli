@@ -10,6 +10,17 @@ CLI tool for the Transmilenio system in Bogotá, Colombia.
 - 🎨 **Interactive ASCII Map** - Visualize the system in your terminal
 - 📍 **Station Search** - Find stations and stops
 - 📢 **Service Alerts** - View operational changes and alerts
+- 🤖 **Claude Desktop Integration** - Use with Claude through MCP (Model Context Protocol)
+
+## Claude Desktop Integration
+
+You can use transmilenio-cli directly from Claude Desktop! Just ask Claude naturally:
+
+> "How do I get from Portal Norte to Av. Jiménez?"
+
+Claude will automatically search routes, plan your trip, and give you directions.
+
+**[📖 See CLAUDE.md for setup instructions](./CLAUDE.md)**
 
 ## Installation
 
