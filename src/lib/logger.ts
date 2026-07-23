@@ -23,17 +23,17 @@ class Logger {
 
   debug(...args: unknown[]) {
     if (this.quiet || this.level > LogLevel.DEBUG) return;
-    console.log(pc.gray('[DEBUG]'), ...args);
+    console.error(pc.gray('[DEBUG]'), ...args);
   }
 
   info(...args: unknown[]) {
     if (this.quiet || this.level > LogLevel.INFO) return;
-    console.log(pc.blue('[INFO]'), ...args);
+    console.error(pc.blue('[INFO]'), ...args);
   }
 
   success(...args: unknown[]) {
     if (this.quiet) return;
-    console.log(pc.green('✓'), ...args);
+    console.error(pc.green('✓'), ...args);
   }
 
   warn(...args: unknown[]) {

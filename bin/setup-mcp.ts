@@ -22,7 +22,7 @@ async function main() {
   if (envs.length === 0) {
     note(
       colors.yellow(
-        `No se detectó Claude Code, Cursor o Windsurf.\nPuedes configurar manualmente el servidor MCP.\n\nComando: bun\nArgs: ["run", "${MCP_SERVER_PATH}"]`
+        `No se detectó Claude Code, Codex, Cursor o Windsurf.\nPuedes configurar manualmente el servidor MCP.\n\nComando: bun\nArgs: ["run", "${MCP_SERVER_PATH}"]`
       ),
       'Configuración manual'
     );
@@ -99,6 +99,9 @@ async function main() {
       case 'Cursor':
         await installCursor();
         break;
+      case 'Codex':
+        await installCodex();
+        break;
       case 'Windsurf':
         await installWindsurf();
         break;
@@ -115,16 +118,16 @@ async function main() {
           '  • get_alerts - Ver alertas\n' +
           '  • check_balance - Consultar saldo\n\n' +
           'Ejemplos de uso:\n' +
-          '  "Busca rutas de Portal Eldorado"\n' +
-          '  "¿Cuántas rutas TransMilenio hay?"\n' +
-          '  "Muéstrame rutas que pasan por Suba"'
+          '  "¿Cómo llego de Cra 21 #87-22 a UniMonserrate?"\n' +
+          '  "Dame la opción con menos transbordos"\n' +
+          '  "Busca rutas de Portal Eldorado"'
       ),
       '¡Listo!'
     );
 
     if (selectedEnv === 'Claude Code') {
       note(
-        `Ejecuta ${colors.cyan('/reload-plugins')} en Claude Code para activar el MCP`,
+        `Reinicia Claude Code y ejecuta ${colors.cyan('/mcp')} para verificar la conexión`,
         'Próximo paso'
       );
     } else {
@@ -151,6 +154,11 @@ function detectEnvironments(): string[] {
   // Check for Claude Code
   if (fs.existsSync(path.join(home, '.claude'))) {
     envs.push('Claude Code');
+  }
+
+  // Check for OpenAI Codex
+  if (Bun.which('codex')) {
+    envs.push('Codex');
   }
 
   // Check for Cursor
@@ -180,6 +188,14 @@ async function installClaudeCode(scope: 'project' | 'global') {
   } else {
     await $`claude mcp add transmilenio bun run ${MCP_SERVER_PATH}`;
   }
+}
+
+async function installCodex() {
+  if (!Bun.which('codex')) {
+    throw new Error('Codex fue detectado, pero el comando "codex" no está disponible en PATH.');
+  }
+  const $ = (await import('bun')).default.$;
+  await $`codex mcp add transmilenio -- bun run ${MCP_SERVER_PATH}`;
 }
 
 async function installCursor() {

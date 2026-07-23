@@ -2,11 +2,34 @@
 
 CLI tool for the Transmilenio system in Bogotá, Colombia.
 
+## Start in two minutes
+
+```bash
+git clone <repository-url>
+cd transmilenio-cli
+bun install
+bun run setup-mcp
+```
+
+The installer configures Claude Code, Codex, Cursor, or Windsurf. Restart the selected
+agent and ask:
+
+> ¿Cómo llego de Cra 21 #87-22 a UniMonserrate? Dame la opción más rápida.
+
+You can also try the terminal directly:
+
+```bash
+bun run dev -- viaje "Cra 21 #87-22" "UniMonserrate"
+```
+
+The result identifies the exact boarding and arrival stops, walking segments, route codes,
+durations, and number of stops.
+
 ## Features
 
 - 🔍 **Route Search** - Search routes by name, code, or destination
 - 🗺️ **Trip Planner** - Find the best route between origin and destination
-- 🌐 **Google Maps Integration** - Extract routes directly from Google Maps using street addresses
+- 🌐 **Google Maps Integration** - Query public-transit alternatives without a browser or API key
 - 💳 **Balance Check** - Check TuLlave card balance
 - 🎨 **Interactive ASCII Map** - Visualize the system in your terminal
 - 📍 **Station Search** - Find stations and stops
@@ -15,7 +38,7 @@ CLI tool for the Transmilenio system in Bogotá, Colombia.
 
 ## Claude Desktop Integration
 
-You can use transmilenio-cli directly from Claude Code, Cursor, or Windsurf! Just ask naturally:
+You can use transmilenio-cli directly from Claude Code, Codex, Cursor, or Windsurf! Just ask naturally:
 
 **Route Search:**
 > "Busca rutas de Portal Eldorado"
@@ -27,7 +50,7 @@ You can use transmilenio-cli directly from Claude Code, Cursor, or Windsurf! Jus
 > "Ruta de mi casa (Cra 21 #87-22) al trabajo (Universidad Nacional)"
 > "Direcciones de Portal Norte a Av. Caracas #45-20"
 
-The CLI automatically detects street addresses and extracts real-time routes from Google Maps!
+The CLI accepts addresses, stations, and place names, then returns the locations Google resolved and the available transit alternatives.
 
 **⚡ Quick Setup:**
 ```bash
@@ -54,9 +77,6 @@ bun install
 # Setup MCP (interactive)
 bun run setup-mcp
 
-# For Google Maps integration (optional but recommended)
-npm i -g agent-browser
-agent-browser install
 ```
 
 **[🗺️ Learn more about Google Maps integration](./GOOGLE-MAPS-INTEGRATION.md)**
@@ -128,7 +148,7 @@ transmi alerts --route "B11"
 - **Prompts:** @clack/prompts 0.7+
 - **Colors:** picocolors 1.0+
 - **Validation:** Zod 3.22+
-- **Web Scraping:** agent-browser
+- **Transit Planning:** Anonymous Google Maps Web client
 
 ## Development
 

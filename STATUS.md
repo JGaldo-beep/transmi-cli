@@ -24,7 +24,7 @@
 - ✅ Routes scraper (estructura lista, datos mock por ahora)
 - ✅ Alerts scraper (datos mock)
 - ✅ Integración con caché
-- ⚠️ **Pendiente:** Implementar scraping real con agent-browser
+- ✅ Rutas consultadas mediante la API de TransMilenio; alertas todavía usan datos mock
 
 ### Fase 5: Motor de Planificación
 - ✅ Graph builder (convierte rutas a grafo)

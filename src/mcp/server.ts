@@ -12,16 +12,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { logger } from '@lib/logger.js';
-import { findShortestPath, pathResultToTripPlan } from '@services/planner/dijkstra.js';
-import { addTransferEdges, buildGraph, findNodeByName } from '@services/planner/graph-builder.js';
-import { planTripFromAddresses } from '@services/planner/address-planner.js';
 import { planTripWithGoogleMaps } from '@services/planner/google-maps-planner.js';
 import { getActiveAlerts, getAlertsByRoute } from '@services/scraper/alerts-scraper.js';
-// Import real services
-import {
-  getRouteDetails,
-  searchRoutes as searchRoutesService,
-} from '@services/scraper/routes-scraper.js';
+import { searchRoutes as searchRoutesService } from '@services/scraper/routes-scraper.js';
 
 /**
  * Search for routes
@@ -44,20 +37,6 @@ async function searchRoutes(query: string, type?: string) {
 }
 
 /**
- * Detect if input looks like an address vs a station name
- */
-function looksLikeAddress(input: string): boolean {
-  // Addresses usually contain street indicators
-  const addressPatterns = [
-    /\b(cra|carrera|calle|cl|av|avenida|diagonal|transversal|kr)\b/i,
-    /\d+\s*#\s*\d+/i, // Pattern like "21 #87-22"
-    /\d+\s*-\s*\d+/i, // Pattern like "80-12"
-  ];
-
-  return addressPatterns.some((pattern) => pattern.test(input));
-}
-
-/**
  * Plan a trip between two locations (addresses or station names)
  */
 async function planTrip(origin: string, destination: string, optimizeFor?: 'time' | 'transfers') {
@@ -66,102 +45,14 @@ async function planTrip(origin: string, destination: string, optimizeFor?: 'time
   );
 
   try {
-    // Check if inputs look like addresses
-    const originIsAddress = looksLikeAddress(origin);
-    const destIsAddress = looksLikeAddress(destination);
-
-    // If either looks like an address, try Google Maps (recommended)
-    if (originIsAddress || destIsAddress) {
-      logger.info('[MCP] Detected address input, using Google Maps');
-
-      try {
-        const googleMapsTrip = await planTripWithGoogleMaps(origin, destination);
-
-        if (googleMapsTrip.success && googleMapsTrip.routes.length > 0) {
-          return {
-            success: true,
-            source: 'google_maps',
-            trip: {
-              origin,
-              destination,
-              routes: googleMapsTrip.routes,
-              rawDetails: googleMapsTrip.rawDetails
-            },
-          };
-        }
-
-        if (googleMapsTrip.error) {
-          logger.warn(`[MCP] Google Maps error: ${googleMapsTrip.error}`);
-          // Return the error to the user instead of falling back silently
-          return {
-            success: false,
-            error: googleMapsTrip.error
-          };
-        }
-      } catch (error) {
-        logger.error('[MCP] Google Maps exception:', error);
-        return {
-          success: false,
-          error: `Error al usar Google Maps: ${error instanceof Error ? error.message : String(error)}`
-        };
-      }
-
-      logger.warn('[MCP] Google Maps returned no routes, falling back to station-based');
-    }
-
-    // Fall back to station-based planning
-    logger.info('[MCP] Using station-based planning');
-
-    // Get TransMilenio (troncal) routes only - they form the backbone of the network
-    const allRoutes = await searchRoutesService('', 'TransMilenio');
-    logger.info(`[MCP] Found ${allRoutes.length} TransMilenio routes`);
-
-    // Limit to first 100 routes for better coverage
-    const routesToLoad = allRoutes.slice(0, 100);
-    logger.info(`[MCP] Loading details for ${routesToLoad.length} routes...`);
-
-    const routeDetails = await Promise.all(
-      routesToLoad.map((r) => getRouteDetails(r.code))
-    );
-    const validRoutes = routeDetails.filter((r) => r !== null);
-
-    logger.info(`[MCP] Loaded ${validRoutes.length} valid routes with stations`);
-
-    if (validRoutes.length === 0) {
-      return {
-        success: false,
-        error: 'No routes available for planning',
-      };
-    }
-
-    // Build graph
-    const graph = addTransferEdges(buildGraph(validRoutes));
-
-    // Find nodes
-    const startNode = findNodeByName(graph, origin);
-    const endNode = findNodeByName(graph, destination);
-
-    if (!startNode) {
-      return {
-        success: false,
-        error: `Origin station "${origin}" not found`,
-      };
-    }
-
-    if (!endNode) {
-      return {
-        success: false,
-        error: `Destination station "${destination}" not found`,
-      };
-    }
-
-    // Find path
-    const pathResult = findShortestPath(graph, startNode, endNode);
-    const tripPlan = pathResultToTripPlan(pathResult, graph, origin, destination);
-
+    // Google Maps resolves addresses, station names, landmarks, and ambiguous place names.
+    const googleMapsTrip = await planTripWithGoogleMaps(origin, destination, optimizeFor);
     return {
-      success: true,
-      trip: tripPlan,
+      success: googleMapsTrip.success,
+      source: 'transmi-cli',
+      dataProvider: 'Google Maps',
+      trip: googleMapsTrip.success ? googleMapsTrip : undefined,
+      error: googleMapsTrip.error,
     };
   } catch (error) {
     logger.error('[MCP] Trip planning error:', error);
@@ -253,23 +144,25 @@ server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsReque
       {
         name: 'plan_trip',
         description:
-          'Plan a trip from origin to destination in Transmilenio system. Supports both addresses (e.g., "Cra 21 #87-22") and station names (e.g., "Portal Norte"). Automatically geocodes addresses, finds nearest stations, and calculates optimal route with walking distances. Returns detailed trip plan with segments, transfers, duration, and walking instructions.',
+          'Plan a public-transit trip in Bogotá. Origin and destination may be addresses, stations, businesses, universities, or landmarks. Returns resolved places, alternatives, exact boarding and arrival stops, times, buses, and walking steps. Lead the user response with the route; mention the underlying data provider only if asked.',
         inputSchema: {
           type: 'object',
           properties: {
             origin: {
               type: 'string',
-              description: 'Starting location: can be a full address (e.g., "Cra 21 #87-22, Bogotá") or a station name (e.g., "Portal Norte")',
+              description:
+                'Starting location: can be a full address (e.g., "Cra 21 #87-22, Bogotá") or a station name (e.g., "Portal Norte")',
             },
             destination: {
               type: 'string',
-              description: 'Destination location: can be a full address (e.g., "Calle 80 #81a-02") or a station name (e.g., "Calle 85")',
+              description:
+                'Destination location: can be a full address (e.g., "Calle 80 #81a-02") or a station name (e.g., "Calle 85")',
             },
             optimizeFor: {
               type: 'string',
               enum: ['time', 'transfers'],
               description:
-                'Optional: Optimize for fastest time or fewest transfers (default: time)',
+                'Optional: Order alternatives by fastest time or fewest vehicle changes (default: time)',
             },
           },
           required: ['origin', 'destination'],
@@ -401,7 +294,7 @@ async function main() {
   logger.info('✓ Server running on stdio');
   logger.info('✓ 4 tools available:');
   logger.info('  • search_routes - Search for routes');
-  logger.info('  • plan_trip - Plan a trip between stations');
+  logger.info('  • plan_trip - Plan a trip between locations');
   logger.info('  • check_balance - Check TuLlave card balance');
   logger.info('  • get_alerts - Get service alerts');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
