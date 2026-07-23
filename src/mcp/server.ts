@@ -13,7 +13,6 @@ import {
 
 import { logger } from '@lib/logger.js';
 import { planTripWithGoogleMaps } from '@services/planner/google-maps-planner.js';
-import { getActiveAlerts, getAlertsByRoute } from '@services/scraper/alerts-scraper.js';
 import { searchRoutes as searchRoutesService } from '@services/scraper/routes-scraper.js';
 
 /**
@@ -63,52 +62,11 @@ async function planTrip(origin: string, destination: string, optimizeFor?: 'time
   }
 }
 
-/**
- * Check TuLlave card balance
- */
-async function checkBalance(cardNumber: string) {
-  logger.info(`[MCP] Checking balance for card ending in ${cardNumber.slice(-4)}`);
-
-  // TODO: Implement actual balance check with web scraping
-  // For now, return mock data
-  return {
-    success: true,
-    cardNumber: cardNumber.replace(/\d(?=\d{4})/g, '*'),
-    balance: 15000,
-    status: 'active',
-    lastUpdate: new Date().toISOString(),
-    message: 'Balance check via web scraping not yet implemented',
-  };
-}
-
-/**
- * Get service alerts
- */
-async function getAlerts(route?: string) {
-  logger.info(`[MCP] Getting alerts${route ? ` for route ${route}` : ''}`);
-
-  const alerts = route ? await getAlertsByRoute(route) : await getActiveAlerts();
-
-  return {
-    success: true,
-    count: alerts.length,
-    alerts: alerts.map((a) => ({
-      title: a.title,
-      description: a.description,
-      route: a.route,
-      active: a.active,
-      type: a.type,
-      startDate: a.startDate,
-      endDate: a.endDate,
-    })),
-  };
-}
-
 // Create MCP server
 const server = new Server(
   {
     name: 'transmilenio',
-    version: '1.0.0',
+    version: '0.1.0',
   },
   {
     capabilities: {
@@ -134,7 +92,7 @@ server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsReque
             },
             type: {
               type: 'string',
-              enum: ['troncal', 'alimentador', 'complementario', 'especial', 'transmi_zonal'],
+              enum: ['TransMilenio', 'TransMiZonal', 'Alimentador', 'Complementario', 'Especial'],
               description: 'Optional: Filter by route type',
             },
           },
@@ -166,36 +124,6 @@ server.setRequestHandler(ListToolsRequestSchema, async (_request: ListToolsReque
             },
           },
           required: ['origin', 'destination'],
-        },
-      },
-      {
-        name: 'check_balance',
-        description:
-          'Check TuLlave card balance. Returns current balance and status. IMPORTANT: Always confirm with user before executing this tool as it requires their card number.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            cardNumber: {
-              type: 'string',
-              description: 'TuLlave card number (16 digits)',
-              pattern: '^[0-9]{16}$',
-            },
-          },
-          required: ['cardNumber'],
-        },
-      },
-      {
-        name: 'get_alerts',
-        description:
-          'Get current service alerts and operational changes for Transmilenio. Returns active alerts, closures, and route changes.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            route: {
-              type: 'string',
-              description: 'Optional: Filter alerts by specific route code',
-            },
-          },
         },
       },
     ],
@@ -239,32 +167,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         };
       }
 
-      case 'check_balance': {
-        const { cardNumber } = request.params.arguments as { cardNumber: string };
-        const result = await checkBalance(cardNumber);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      }
-
-      case 'get_alerts': {
-        const { route } = request.params.arguments as { route?: string };
-        const result = await getAlerts(route);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      }
-
       default:
         throw new Error(`Unknown tool: ${request.params.name}`);
     }
@@ -292,11 +194,9 @@ async function main() {
   logger.info('  Transmilenio MCP Server');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('✓ Server running on stdio');
-  logger.info('✓ 4 tools available:');
+  logger.info('✓ 2 tools available:');
   logger.info('  • search_routes - Search for routes');
   logger.info('  • plan_trip - Plan a trip between locations');
-  logger.info('  • check_balance - Check TuLlave card balance');
-  logger.info('  • get_alerts - Get service alerts');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('Ready for Claude Desktop!');
 }

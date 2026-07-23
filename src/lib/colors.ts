@@ -45,13 +45,3 @@ export const colors = {
   complementario: (text: string) => pc.blue(text),
   especial: (text: string) => pc.yellow(text),
 };
-
-// Helper to disable colors
-export function disableColors() {
-  pc.createColors({ useColor: false });
-}
-
-// Helper to check if stdout supports colors
-export function supportsColor(): boolean {
-  return process.stdout.isTTY ?? false;
-}

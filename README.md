@@ -1,204 +1,135 @@
-# Transmilenio CLI
+# transmi-cli
 
-CLI tool for the Transmilenio system in Bogotá, Colombia.
+Planea viajes en transporte público por Bogotá desde la terminal o desde cualquier agente
+compatible con MCP.
 
-## Start in two minutes
+[![Bun](https://img.shields.io/badge/runtime-Bun-f9f1e1?logo=bun&logoColor=black)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-```bash
-git clone <repository-url>
-cd transmilenio-cli
-bun install
-bun run setup-mcp
+## Qué hace
+
+- Acepta direcciones, estaciones, universidades, empresas y nombres de lugares.
+- Devuelve varias alternativas ordenadas por tiempo o por cantidad de transbordos.
+- Indica dónde caminar, en qué parada tomar cada bus y en qué parada bajarse.
+- Busca rutas por nombre o código usando datos de TransMilenio.
+- Se integra con Claude Code, Codex, Cursor y Windsurf mediante MCP.
+- No abre un navegador ni requiere una API key durante una consulta.
+
+## Ejemplo
+
+```text
+¿Cómo llego de Cra 21 #87-22 a UniMonserrate?
+Dame la opción más rápida y dime exactamente dónde tomar cada bus.
 ```
 
-The installer configures Claude Code, Codex, Cursor, or Windsurf. Restart the selected
-agent and ask:
+Una respuesta incluye instrucciones como:
 
-> ¿Cómo llego de Cra 21 #87-22 a UniMonserrate? Dame la opción más rápida.
+```text
+1. Camina hasta Br. La Castellana.
+2. Toma T11 en Br. La Castellana hasta Estación Av. Chile (4 paradas).
+3. Camina hasta Hsp. Infantil San José.
+4. Toma 669 hasta Avenida La Esmeralda (2 paradas).
+5. Camina hasta el destino.
+```
 
-You can also try the terminal directly:
+## Instalación
+
+### Requisitos
+
+- [Bun](https://bun.sh) 1.2 o superior.
+- Acceso a internet para consultar rutas.
+- Un cliente MCP es opcional; la CLI también funciona por sí sola.
+
+```bash
+git clone https://github.com/JGaldo-beep/transmi-cli.git
+cd transmi-cli
+bun install
+```
+
+## Uso desde terminal
+
+Planear un viaje:
 
 ```bash
 bun run dev -- viaje "Cra 21 #87-22" "UniMonserrate"
 ```
 
-The result identifies the exact boarding and arrival stops, walking segments, route codes,
-durations, and number of stops.
+Priorizar menos transbordos y mostrar hasta cinco alternativas:
 
-## Features
-
-- 🔍 **Route Search** - Search routes by name, code, or destination
-- 🗺️ **Trip Planner** - Find the best route between origin and destination
-- 🌐 **Google Maps Integration** - Query public-transit alternatives without a browser or API key
-- 💳 **Balance Check** - Check TuLlave card balance
-- 🎨 **Interactive ASCII Map** - Visualize the system in your terminal
-- 📍 **Station Search** - Find stations and stops
-- 📢 **Service Alerts** - View operational changes and alerts
-- 🤖 **Claude Desktop Integration** - Use with Claude through MCP (Model Context Protocol)
-
-## Claude Desktop Integration
-
-You can use transmilenio-cli directly from Claude Code, Codex, Cursor, or Windsurf! Just ask naturally:
-
-**Route Search:**
-> "Busca rutas de Portal Eldorado"
-> "¿Cuántas rutas TransMilenio hay?"
-> "Muéstrame rutas que pasan por Suba"
-
-**Trip Planning with Google Maps** 🌐 **NEW!**
-> "¿Cómo llego de Cra 7 #32-16 a Calle 26?"
-> "Ruta de mi casa (Cra 21 #87-22) al trabajo (Universidad Nacional)"
-> "Direcciones de Portal Norte a Av. Caracas #45-20"
-
-The CLI accepts addresses, stations, and place names, then returns the locations Google resolved and the available transit alternatives.
-
-**⚡ Quick Setup:**
 ```bash
-bun install
+bun run dev -- viaje "Portal Norte" "Universidad Nacional" \
+  --optimizar transbordos --alternativas 5
+```
+
+Buscar rutas:
+
+```bash
+bun run dev -- rutas "Portal Norte"
+```
+
+## Uso con agentes de IA
+
+Ejecuta el instalador interactivo:
+
+```bash
 bun run setup-mcp
 ```
 
-The interactive installer will detect your environment and configure everything automatically!
+El instalador detecta Claude Code, Codex, Cursor o Windsurf y registra el servidor MCP.
+Después reinicia el agente y pregunta por una ruta con lenguaje natural.
 
-**[📖 See INSTALL.md for detailed instructions](./INSTALL.md)**
+El servidor expone dos herramientas:
 
-## Installation
+| Herramienta | Descripción |
+| --- | --- |
+| `plan_trip` | Planea un viaje entre dos direcciones o lugares. |
+| `search_routes` | Busca rutas de TransMilenio por nombre o código. |
 
-### Quick Start
-
-```bash
-# Clone the repository
-git clone <url>
-cd transmilenio-cli
-
-# Install dependencies
-bun install
-
-# Setup MCP (interactive)
-bun run setup-mcp
-
-```
-
-**[🗺️ Learn more about Google Maps integration](./GOOGLE-MAPS-INTEGRATION.md)**
-
-### Features
-
-- ✅ **1,228 real routes** from Transmilenio's official API
-- ✅ **245 TransMilenio routes** (trunk lines)
-- ✅ **Real schedules** by day type (Mon-Fri, Mon-Sat, Sun-Holidays)
-- ✅ **Trunk line information** (zones, colors, PDFs)
-- ✅ **Automatic caching** (24h TTL for better performance)
-- ✅ **Advanced search** by name, code, and type
-
-## Usage
-
-### Development
+Para comprobar manualmente que el servidor inicia:
 
 ```bash
-bun run dev [command]
+bun run mcp
 ```
 
-### Build
+El proceso permanece abierto porque espera solicitudes por `stdio`; no está bloqueado.
 
-```bash
-bun run build
-```
+## Cómo funciona
 
-### Commands
+`transmi-cli` combina el catálogo de rutas de TransMilenio con resultados de transporte
+público de Google Maps Web. La consulta de viajes se realiza por HTTP y la respuesta se
+convierte a un formato estable para la CLI y el MCP.
 
-#### Search Routes
-```bash
-transmi search "Portal Norte"
-transmi search "C30" --type troncal
-```
+Consulta [Arquitectura y fuentes de datos](./docs/ARCHITECTURE.md) para conocer el diseño,
+las decisiones técnicas y las limitaciones.
 
-#### Plan a Trip
-```bash
-transmi plan "Portal Norte" "Av. Jiménez"
-transmi plan "Suba" "Centro" --time 08:00 --alternatives 3
-```
+## Limitaciones
 
-#### Check Balance
-```bash
-transmi balance 1234567890123456
-```
+- Google puede cambiar su endpoint web no documentado y romper temporalmente la planificación.
+- Los nombres ambiguos pueden resolverse a un lugar distinto; siempre se muestra el origen y
+  destino interpretados para que el usuario pueda corregirlos.
+- Las alertas operacionales en tiempo real y el saldo de TuLlave no están implementados.
+- Esta herramienta no reemplaza información oficial durante cierres o emergencias.
 
-#### View Map
-```bash
-transmi map --interactive
-transmi map "Portal Norte" --route "B11" --legend
-```
-
-#### Find Stations
-```bash
-transmi stops "Portal"
-```
-
-#### View Alerts
-```bash
-transmi alerts
-transmi alerts --route "B11"
-```
-
-## Tech Stack
-
-- **Runtime:** Bun 1.2+
-- **Language:** TypeScript 5.6+
-- **CLI Framework:** Commander.js 12+
-- **Prompts:** @clack/prompts 0.7+
-- **Colors:** picocolors 1.0+
-- **Validation:** Zod 3.22+
-- **Transit Planning:** Anonymous Google Maps Web client
-
-## Development
-
-### Lint
-
-```bash
-bun run lint
-bun run lint:fix
-```
-
-### Format
-
-```bash
-bun run format
-```
-
-### Test
+## Desarrollo
 
 ```bash
 bun test
-bun test:watch
+bun run lint
 ```
 
-### Type Check
+## Roadmap
 
-```bash
-bun run type-check
-```
+- Selección interactiva cuando un lugar tenga varias coincidencias.
+- Consultas por hora de salida o de llegada.
+- Alertas operacionales verificadas.
+- Publicación como paquete para instalarlo con un solo comando.
 
-## Project Structure
+## Aviso
 
-```
-transmilenio-cli/
-├── bin/
-│   └── transmi.ts           # Entry point
-├── src/
-│   ├── commands/            # CLI commands
-│   ├── services/            # Business logic
-│   │   ├── scraper/        # Web scraping
-│   │   ├── planner/        # Route planning
-│   │   ├── cache/          # Caching system
-│   │   └── map/            # Map rendering
-│   ├── schemas/            # Zod schemas
-│   ├── types/              # TypeScript types
-│   ├── lib/                # Utilities
-│   └── config/             # Configuration
-├── data/                   # Local cache
-└── tests/                  # Tests
-```
+Este proyecto es independiente y no está afiliado con TransMilenio S.A. ni con Google.
+Los nombres y marcas pertenecen a sus respectivos propietarios.
 
-## License
+## Licencia
 
-MIT
+[MIT](./LICENSE)

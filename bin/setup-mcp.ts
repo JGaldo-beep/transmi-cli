@@ -114,9 +114,7 @@ async function main() {
         '✅ Servidor MCP instalado correctamente\n\n' +
           'Herramientas disponibles:\n' +
           '  • search_routes - Buscar entre 1,228 rutas\n' +
-          '  • plan_trip - Planificar viajes\n' +
-          '  • get_alerts - Ver alertas\n' +
-          '  • check_balance - Consultar saldo\n\n' +
+          '  • plan_trip - Planificar viajes\n\n' +
           'Ejemplos de uso:\n' +
           '  "¿Cómo llego de Cra 21 #87-22 a UniMonserrate?"\n' +
           '  "Dame la opción con menos transbordos"\n' +

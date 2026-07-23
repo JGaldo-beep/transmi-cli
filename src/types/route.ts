@@ -32,8 +32,8 @@ export interface ApiInformacion {
   mapa: string | null;
   puntosParada: string | null;
   plegable: string | null;
-  fechaActualizacion: string;
-  usuario: string;
+  fechaActualizacion: string | null;
+  usuario: string | null;
 }
 
 export interface ApiParadero {

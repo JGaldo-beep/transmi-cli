@@ -14,7 +14,7 @@ showBanner();
 program
   .name('transmi')
   .description('Consulta rutas y planea viajes en transporte público por Bogotá')
-  .version('1.0.0')
+  .version('0.1.0')
   .showHelpAfterError();
 
 program
@@ -83,12 +83,5 @@ program
       console.log('Datos de rutas: Google Maps');
     }
   );
-
-program
-  .command('alertas')
-  .description('Ver alertas y cambios operacionales')
-  .action(() => {
-    console.log('La consulta de alertas reales todavía está en desarrollo.');
-  });
 
 await program.parseAsync();

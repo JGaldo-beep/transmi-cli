@@ -1,5 +1,5 @@
-import figlet from 'figlet';
 import chalk from 'chalk';
+import figlet from 'figlet';
 import gradient from 'gradient-string';
 
 const bus = `
@@ -23,7 +23,7 @@ export function showBanner(): void {
     horizontalLayout: 'default',
     verticalLayout: 'default',
     width: 80,
-    whitespaceBreak: true
+    whitespaceBreak: true,
   });
 
   // Mostrar el bus en color rojo
@@ -40,5 +40,5 @@ export function showWelcome(): void {
   console.log(chalk.yellow('━'.repeat(60)));
   console.log(chalk.bold.red('  🚌  Bienvenido al CLI de TransMilenio'));
   console.log(chalk.gray('  Consulta rutas, planea viajes y más...'));
-  console.log(chalk.yellow('━'.repeat(60)) + '\n');
+  console.log(`${chalk.yellow('━'.repeat(60))}\n`);
 }

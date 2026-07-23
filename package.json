@@ -1,7 +1,7 @@
 {
-  "name": "transmilenio-cli",
-  "version": "1.0.0",
-  "description": "CLI tool for Transmilenio system in Bogotá, Colombia",
+  "name": "transmi-cli",
+  "version": "0.1.0",
+  "description": "Planea viajes en transporte público por Bogotá desde la terminal o mediante MCP",
   "type": "module",
   "bin": {
     "transmi": "./bin/transmi.ts"
@@ -19,14 +19,7 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist data/*.json"
   },
-  "keywords": [
-    "transmilenio",
-    "cli",
-    "bogota",
-    "transport",
-    "transit",
-    "colombia"
-  ],
+  "keywords": ["transmilenio", "cli", "bogota", "transport", "transit", "colombia"],
   "author": "",
   "license": "MIT",
   "dependencies": {

@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // Test script for Google Maps integration
 
-import { planTripWithGoogleMaps } from './src/services/planner/google-maps-planner.js';
 import { logger } from './src/lib/logger.js';
+import { planTripWithGoogleMaps } from './src/services/planner/google-maps-planner.js';
 
 async function main() {
   logger.info('Testing Google Maps integration...\n');
@@ -22,7 +22,7 @@ async function main() {
     logger.error(`✗ Failed: ${result1.error}`);
   }
 
-  console.log('\n' + '─'.repeat(60) + '\n');
+  console.log(`\n${'─'.repeat(60)}\n`);
 
   // Test 2: Original addresses
   logger.info('Test 2: Cra 21 #87-22 → UNIMONSERRATE');
@@ -39,7 +39,7 @@ async function main() {
     logger.error(`✗ Failed: ${result2.error}`);
   }
 
-  console.log('\n' + '─'.repeat(60) + '\n');
+  console.log(`\n${'─'.repeat(60)}\n`);
   logger.info('Test complete!');
 }
 

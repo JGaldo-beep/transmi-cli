@@ -3,6 +3,9 @@
   "organizeImports": {
     "enabled": true
   },
+  "files": {
+    "ignore": ["data/**", ".claude/**", ".codegraph/**", "tmpclaude-*", "node_modules/**"]
+  },
   "linter": {
     "enabled": true,
     "rules": {

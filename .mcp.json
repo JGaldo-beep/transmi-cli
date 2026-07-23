@@ -1,6 +1,8 @@
 {
-  "transmilenio": {
-    "command": "bun",
-    "args": ["run", "src/mcp/server.ts"]
+  "mcpServers": {
+    "transmilenio": {
+      "command": "bun",
+      "args": ["run", "src/mcp/server.ts"]
+    }
   }
 }

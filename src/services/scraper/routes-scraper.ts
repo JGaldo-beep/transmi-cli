@@ -2,9 +2,15 @@
 
 import { ScrapingError } from '@lib/errors.js';
 import { logger } from '@lib/logger.js';
+import type {
+  ApiParadero,
+  ApiRoute,
+  ApiRoutesResponse,
+  Route,
+  RouteDetails,
+} from '@models/route.js';
 import { ApiRoutesResponseSchema } from '@schemas/route.schema.js';
 import { cacheManager } from '@services/cache/index.js';
-import type { ApiParadero, ApiRoute, ApiRoutesResponse, Route, RouteDetails } from '@types/route.js';
 
 const API_BASE_URL = 'https://ms-transmiapp-rm2xahnybq-uk.a.run.app/api/v1';
 
@@ -159,15 +165,12 @@ async function getRouteParaderos(routeId: number, routeCode: string): Promise<st
   logger.info(`Fetching paraderos for route ${routeCode}...`);
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/rutas/${routeId}/${routeCode}/paraderos`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/rutas/${routeId}/${routeCode}/paraderos`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -218,8 +221,7 @@ export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetai
 
     // Find the route by ID or code
     const route = allRoutes.find(
-      (r) =>
-        r.id === routeIdOrCode || r.code.toLowerCase() === routeIdOrCode.toLowerCase()
+      (r) => r.id === routeIdOrCode || r.code.toLowerCase() === routeIdOrCode.toLowerCase()
     );
 
     if (!route) {
@@ -228,21 +230,18 @@ export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetai
     }
 
     // Fetch route information with details
-    const response = await fetch(
-      `${API_BASE_URL}/rutas/${route.id}/${route.code}/`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/rutas/${route.id}/${route.code}/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    const apiRoute = await response.json() as ApiRoute;
+    const apiRoute = (await response.json()) as ApiRoute;
 
     // Convert to RouteDetails
     const details = apiRouteToRouteDetails(apiRoute);

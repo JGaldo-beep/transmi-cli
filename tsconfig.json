@@ -18,7 +18,7 @@
       "@commands/*": ["src/commands/*"],
       "@services/*": ["src/services/*"],
       "@schemas/*": ["src/schemas/*"],
-      "@types/*": ["src/types/*"],
+      "@models/*": ["src/types/*"],
       "@lib/*": ["src/lib/*"],
       "@config/*": ["src/config/*"]
     }
