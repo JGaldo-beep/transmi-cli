@@ -16,6 +16,12 @@ export function buildGraph(routes: RouteDetails[]): Graph {
 
   // Create nodes for all stations
   for (const route of routes) {
+    // Skip routes without stations data
+    if (!route.stations || route.stations.length === 0) {
+      logger.warn(`Route ${route.code} has no stations, skipping`);
+      continue;
+    }
+
     for (const stationName of route.stations) {
       const stationId = normalizeStationId(stationName);
 
@@ -31,6 +37,11 @@ export function buildGraph(routes: RouteDetails[]): Graph {
 
   // Create edges for all route segments
   for (const route of routes) {
+    // Skip routes without stations data
+    if (!route.stations || route.stations.length < 2) {
+      continue;
+    }
+
     for (let i = 0; i < route.stations.length - 1; i++) {
       const from = normalizeStationId(route.stations[i]);
       const to = normalizeStationId(route.stations[i + 1]);
@@ -43,7 +54,8 @@ export function buildGraph(routes: RouteDetails[]): Graph {
         to,
         route: route.code,
         weight,
-        distance: route.distance / route.stations.length, // Approximate
+        // Approximate distance: assume 500m between stations on average
+        distance: 0.5,
       };
 
       // Add edge to adjacency list
@@ -110,7 +122,10 @@ function normalizeStationId(stationName: string): string {
  * Calculate edge weight (travel time in minutes)
  */
 function calculateEdgeWeight(route: RouteDetails, segmentIndex: number): number {
-  const baseTime = route.estimatedDuration / (route.stations.length - 1);
+  // Default to 2 minutes per segment if no duration is available
+  const duration = route.estimatedDuration || route.stations!.length * 2;
+  const segments = Math.max(1, route.stations!.length - 1);
+  const baseTime = duration / segments;
 
   // Apply route type multiplier
   const typeMultiplier = ROUTE_TYPE_WEIGHTS[route.type] || 1.0;

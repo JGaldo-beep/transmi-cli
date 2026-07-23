@@ -6,6 +6,7 @@ CLI tool for the Transmilenio system in Bogotá, Colombia.
 
 - 🔍 **Route Search** - Search routes by name, code, or destination
 - 🗺️ **Trip Planner** - Find the best route between origin and destination
+- 🌐 **Google Maps Integration** - Extract routes directly from Google Maps using street addresses
 - 💳 **Balance Check** - Check TuLlave card balance
 - 🎨 **Interactive ASCII Map** - Visualize the system in your terminal
 - 📍 **Station Search** - Find stations and stops
@@ -16,9 +17,17 @@ CLI tool for the Transmilenio system in Bogotá, Colombia.
 
 You can use transmilenio-cli directly from Claude Code, Cursor, or Windsurf! Just ask naturally:
 
+**Route Search:**
 > "Busca rutas de Portal Eldorado"
 > "¿Cuántas rutas TransMilenio hay?"
 > "Muéstrame rutas que pasan por Suba"
+
+**Trip Planning with Google Maps** 🌐 **NEW!**
+> "¿Cómo llego de Cra 7 #32-16 a Calle 26?"
+> "Ruta de mi casa (Cra 21 #87-22) al trabajo (Universidad Nacional)"
+> "Direcciones de Portal Norte a Av. Caracas #45-20"
+
+The CLI automatically detects street addresses and extracts real-time routes from Google Maps!
 
 **⚡ Quick Setup:**
 ```bash
@@ -44,7 +53,13 @@ bun install
 
 # Setup MCP (interactive)
 bun run setup-mcp
+
+# For Google Maps integration (optional but recommended)
+npm i -g agent-browser
+agent-browser install
 ```
+
+**[🗺️ Learn more about Google Maps integration](./GOOGLE-MAPS-INTEGRATION.md)**
 
 ### Features
 

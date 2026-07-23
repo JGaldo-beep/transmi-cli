@@ -4,7 +4,7 @@ import { ScrapingError } from '@lib/errors.js';
 import { logger } from '@lib/logger.js';
 import { ApiRoutesResponseSchema } from '@schemas/route.schema.js';
 import { cacheManager } from '@services/cache/index.js';
-import type { ApiRoute, ApiRoutesResponse, Route, RouteDetails } from '@types/route.js';
+import type { ApiParadero, ApiRoute, ApiRoutesResponse, Route, RouteDetails } from '@types/route.js';
 
 const API_BASE_URL = 'https://ms-transmiapp-rm2xahnybq-uk.a.run.app/api/v1';
 
@@ -144,6 +144,60 @@ export async function searchRoutes(query: string, type?: string): Promise<Route[
 }
 
 /**
+ * Get paraderos (stations) for a specific route
+ */
+async function getRouteParaderos(routeId: number, routeCode: string): Promise<string[]> {
+  const cacheKey = `route_paraderos_${routeCode}`;
+
+  // Check cache first
+  const cached = await cacheManager.get<string[]>(cacheKey);
+  if (cached) {
+    logger.info(`Using cached paraderos for ${routeCode}`);
+    return cached;
+  }
+
+  logger.info(`Fetching paraderos for route ${routeCode}...`);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/rutas/${routeId}/${routeCode}/paraderos`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Validate that we got an array
+    if (!Array.isArray(data)) {
+      throw new Error('Expected array of paraderos');
+    }
+
+    // Extract station names in order
+    const stations = (data as ApiParadero[])
+      .sort((a, b) => a.posicion - b.posicion)
+      .map((paradero) => paradero.nombre);
+
+    // Cache the results
+    await cacheManager.set(cacheKey, stations);
+
+    logger.success(`Fetched ${stations.length} paraderos for route ${routeCode}`);
+    return stations;
+  } catch (error) {
+    logger.error(`Failed to get paraderos for route ${routeCode}:`, error);
+    // Return empty array instead of throwing to allow partial data
+    return [];
+  }
+}
+
+/**
  * Get route details by ID or code
  */
 export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetails | null> {
@@ -159,15 +213,28 @@ export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetai
   logger.info(`Fetching route details for ${routeIdOrCode}...`);
 
   try {
-    // Search for the specific route
+    // Get all routes first (from cache if available)
+    const allRoutes = await scrapeRoutes();
+
+    // Find the route by ID or code
+    const route = allRoutes.find(
+      (r) =>
+        r.id === routeIdOrCode || r.code.toLowerCase() === routeIdOrCode.toLowerCase()
+    );
+
+    if (!route) {
+      logger.warn(`Route not found: ${routeIdOrCode}`);
+      return null;
+    }
+
+    // Fetch route information with details
     const response = await fetch(
-      `${API_BASE_URL}/rutas/buscar?page=0&size=100&sort=idCodigo%2Casc`,
+      `${API_BASE_URL}/rutas/${route.id}/${route.code}/`,
       {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
       }
     );
 
@@ -175,22 +242,19 @@ export async function getRouteDetails(routeIdOrCode: string): Promise<RouteDetai
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
-    const validated = ApiRoutesResponseSchema.parse(data);
-
-    // Find the route by ID or code
-    const apiRoute = validated.content.find(
-      (r) =>
-        r.id.toString() === routeIdOrCode || r.codigo.toLowerCase() === routeIdOrCode.toLowerCase()
-    );
-
-    if (!apiRoute) {
-      logger.warn(`Route not found: ${routeIdOrCode}`);
-      return null;
-    }
+    const apiRoute = await response.json() as ApiRoute;
 
     // Convert to RouteDetails
     const details = apiRouteToRouteDetails(apiRoute);
+
+    // Fetch paraderos (stations) for this route
+    const stations = await getRouteParaderos(apiRoute.id, apiRoute.codigo);
+    details.stations = stations;
+
+    // Estimate duration based on number of stations (rough estimate: 2 min per station)
+    if (stations.length > 0) {
+      details.estimatedDuration = Math.max(10, stations.length * 2);
+    }
 
     // Cache the results
     await cacheManager.set(cacheKey, details);

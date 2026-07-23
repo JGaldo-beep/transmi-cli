@@ -36,6 +36,16 @@ export interface ApiInformacion {
   usuario: string;
 }
 
+export interface ApiParadero {
+  id: number;
+  codigo: string;
+  nombre: string;
+  direccion: string;
+  posicion: number;
+  sistema: string;
+  color: string;
+}
+
 export interface ApiRoute {
   id: number;
   nombre: string;
